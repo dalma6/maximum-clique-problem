@@ -9,3 +9,6 @@ class Graph:
 		
 	def length(self):
 		return len(self.vertices)
+
+	def __getitem__(self, item):
+		return getattr(self, item)
