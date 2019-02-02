@@ -7,5 +7,5 @@ class Graph:
 	def print_graph(self):
 		print self.vertices
 		
-graph = Graph("input1.json")
-graph.print_graph()
+	def length(self):
+		return len(self.vertices)
