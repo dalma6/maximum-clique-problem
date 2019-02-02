@@ -26,7 +26,7 @@ def  clique(U,size):
 				if new_U[v]==[]:
 					del new_U[v]
 		U.vertices=new_U			
-		clique(graph,size+1)
+		clique(U,size+1)
 	return
 
 
