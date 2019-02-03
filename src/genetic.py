@@ -8,12 +8,13 @@ class GeneticAlgorithm:
 		self._graph = graph 
 		self._allowed_gene_values = set([0, 1])
 		
-		self._iterations = 1000
+		self._iterations = 10
 		self._generation_size = 50
 		self._mutation_rate = 0.5	  
 		self._reproduction_size = 1000  
-		self._current_iteration = 0	 
-		self._top_chromosome = None
+		self._current_iteration = 0
+
+		self._offspring_selection_mutation_prob = 0.2
 		
 		if self._graph.length() < 10:
 			self._max_cut_points = self._graph.length() - 1
@@ -24,17 +25,125 @@ class GeneticAlgorithm:
 		self._num_cut_points = self._max_cut_points
 
 
+	def local_optimize(self, child1, child2):
+		child1, child2 = self.clique_extraction(child1,child2)
+		child1, child2 = self.clique_improvement(child1,child2)
+		return child1, child2
+	
+	def clique_extraction(self, child1, child2):
+		graph1 = self.create_subgraph(self._graph.vertices,child1)
+		graph2 = self.create_subgraph(self._graph.vertices,child2)
+		while (not self.is_clique(graph1)) and graph1 != {}:
+			array = self.find_smallest_two_degrees(graph1)
+			child1, graph1 = self.delete_random_and_update(array,child1,graph1)
+		while (not self.is_clique(graph2)) and graph2 != {}:
+			array = self.find_smallest_two_degrees(graph2)
+			child2, graph2 = self.delete_random_and_update(array,child2,graph2)
+		return child1, child2
+
+	def clique_improvement(self, child1, child2):
+		i1 = self.take_random_element(child1)
+		i2 = self.take_random_element(child2)
+		
+		for j in range(i1, len(child1)):
+			if not child1[j]:
+				if self.connected(self.create_subgraph(self._graph.vertices,child1), j):
+					child1[j] = 1
+		for j in range(i1):
+			if not child1[j]:
+				if self.connected(self.create_subgraph(self._graph.vertices,child1), j):
+					child1[j] = 1
+		for j in range(i2, len(child2)):
+			if not child2[j]:
+				if self.connected(self.create_subgraph(self._graph.vertices,child2), j):
+					child2[j] = 1
+		for j in range(i2):
+			if not child2[j]:
+				if self.connected(self.create_subgraph(self._graph.vertices,child2), j):
+					child1[j] = 1
+		return child1, child2
+
+	def create_subgraph(self, graph, child):
+		subgraph = {}
+		for i in range(len(child)):
+			if child[i]:
+				subgraph[str(i)] = []
+				for v in graph[str(i)]:
+					subgraph[str(i)].append(v)
+		empty_list = []
+		for i in subgraph:
+			for v in subgraph[i]:
+				if not child[int(v)]:
+					subgraph[i].remove(v)
+			if subgraph[i] == []:
+				empty_list.append(i)
+		for i in empty_list:
+			del subgraph[str(i)]
+		return subgraph
+
+	def is_clique(self, graph):
+		if not graph:
+			return False
+		
+		for v in graph:
+			if not self.connected(graph,v):
+				return False
+		return True
+
+	def connected(self, A, v):
+		for u in A:
+			if u != v:
+				if v not in A[u]:
+					return False
+		return True
+
+
+	def find_smallest_two_degrees(self, graph):	
+		min1 = random.choice(graph.keys())
+		min2 = min1
+		while min1 == min2:
+			min2 = random.choice(graph.keys())
+		
+		min1_len = len(graph[min1])
+		min2_len = len(graph[min2])
+		array = []
+		if min1_len > min2_len:
+			s = False
+		else:
+			s = True
+
+		for i in graph:
+			if i != min1 and i != min2:
+				if s and len(graph[i]) < min2_len:
+					min2_len = len(graph[i])
+					if min2_len < min1_len:
+						s = False
+				elif (not s) and len(graph[i])<min1_len:
+					min1_len = len(graph[i])
+					if min1_len < min2_len:
+						s = True
+		for i in graph:
+			if len(graph[i]) == min1_len or len(graph[i]) == min2_len:
+				array.append(int(i))
+		return array
+
+	def delete_random_and_update(self, array, child, graph):
+		removed = self.take_random_element(array)
+		child[removed] = 0
+		new_graph = self.create_subgraph(self._graph.vertices, child)
+		return child, new_graph
+
 	def optimize(self):
 		chromosomes = self.initial_population()
 
 		while not self.stop_condition():
 			for_reproduction = self.selection(chromosomes)
+			print "Current iteration "+str(self._current_iteration)
+			
 			chromosomes = self.create_generation(for_reproduction)
 			self._current_iteration += 1
-		if self._top_chromosome:
-			return Chromosome(self._top_chromosome, self.fitness(self._top_chromosome))
-		else:
-			return max(chromosomes, key=lambda chromo: chromo.fitness)
+		
+		return max(chromosomes, key=lambda chromo: chromo.fitness)
 
 
 	def create_generation(self, for_reproduction):
@@ -44,9 +153,12 @@ class GeneticAlgorithm:
 		while len(new_generation) < self._generation_size:
 			parents = random.sample(for_reproduction, 2)
 			child1, child2 = self.crossover(parents[0].content, parents[1].content)
-
-			child1 = self.mutation(child1)
-			child2 = self.mutation(child2)
+			child1, child2 = self.local_optimize(child1, child2)
+			p = random.random()
+			if p < self._offspring_selection_mutation_prob:
+				child1 = self.mutation(child1)
+				child2 = self.mutation(child2)
+			print child1, child2
 
 			new_generation.append(Chromosome(child1, self.fitness(child1)))
 			new_generation.append(Chromosome(child2, self.fitness(child2)))
@@ -119,12 +231,6 @@ class GeneticAlgorithm:
 			if value > pick:
 				return chromosome
 
-
-	def the_goal_function(self, chromosome):
-		if chromosome == self._target:
-			self._top_chromosome = chromosome
-
-
 	def fitness(self, chromosome):
 		return sum(chromosome)
 
@@ -132,12 +238,6 @@ class GeneticAlgorithm:
 	def take_random_element(self, fromHere):
 		i = random.randrange(0, len(fromHere))
 		return fromHere[i]
-
-	def connected(self, A, v):
-		for u in A:
-			if v not in A[u]:
-				return False
-		return True
 
 	def initial_population(self):
 		init_pop = []
@@ -169,7 +269,7 @@ class GeneticAlgorithm:
 		return init_pop
 
 	def stop_condition(self):
-		return self._current_iteration > self._iterations or self._top_chromosome != None
+		return self._current_iteration > self._iterations
 
 class Chromosome:
 	def __init__(self, content, fitness):
@@ -180,7 +280,8 @@ class Chromosome:
 
 
 if __name__ == "__main__":
-	graph = Graph("input1.json")
+	graph = Graph("input2.json")
+	graph.print_graph()
 	genetic = GeneticAlgorithm(graph)
 	solution = genetic.optimize()
 	print("Solution: %s fitness: %d" % (solution.content, solution.fitness))
