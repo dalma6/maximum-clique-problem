@@ -2,6 +2,7 @@ import random, string
 import numpy as np
 import sys, os
 from Graph import Graph
+from datetime import datetime
 
 class GeneticAlgorithm:
 	def __init__(self, graph):
@@ -13,7 +14,8 @@ class GeneticAlgorithm:
 		self._mutation_rate = 0.5	  
 		self._reproduction_size = 1000  
 		self._current_iteration = 0
-
+		self._stagnancy_parameter=20
+		self._stagnancy_counter=0
 		self._offspring_selection_mutation_prob = 0.2
 		
 		if self._graph.length() < 10:
@@ -135,12 +137,16 @@ class GeneticAlgorithm:
 
 	def optimize(self):
 		chromosomes = self.initial_population()
-
+		s=0
 		while not self.stop_condition():
 			for_reproduction = self.selection(chromosomes)
 			print "Current iteration "+str(self._current_iteration)
 			
-			chromosomes = self.create_generation(for_reproduction)
+			chromosomes,s_new = self.create_generation(for_reproduction)
+			if s_new==s:
+				self._stagnancy_counter+=1
+			else:
+				s=s_new
 			self._current_iteration += 1
 		
 		return max(chromosomes, key=lambda chromo: chromo.fitness)
@@ -148,6 +154,7 @@ class GeneticAlgorithm:
 
 	def create_generation(self, for_reproduction):
 		new_generation = []
+		s_new=0
 		if self._num_cut_points > self._min_cut_points and self._current_iteration%20 == 0:
 				self._num_cut_points -= 2
 		while len(new_generation) < self._generation_size:
@@ -159,11 +166,14 @@ class GeneticAlgorithm:
 				child1 = self.mutation(child1)
 				child2 = self.mutation(child2)
 			print child1, child2
-
+			if self.fitness(child1)>s_new:
+				s_new=self.fitness(child1)
+			if self.fitness(child2)>s_new:
+				s_new=self.fitness(child2)
 			new_generation.append(Chromosome(child1, self.fitness(child1)))
 			new_generation.append(Chromosome(child2, self.fitness(child2)))
 
-		return new_generation
+		return new_generation,s_new
 
 
 	def take_n_random_elements(self, n, limit):
@@ -269,7 +279,7 @@ class GeneticAlgorithm:
 		return init_pop
 
 	def stop_condition(self):
-		return self._current_iteration > self._iterations
+		return self._current_iteration > self._iterations or self._stagnancy_counter>=self._stagnancy_parameter
 
 class Chromosome:
 	def __init__(self, content, fitness):
@@ -280,8 +290,15 @@ class Chromosome:
 
 
 if __name__ == "__main__":
-	graph = Graph("input2.json")
+	graph = Graph("input3.json")
 	graph.print_graph()
 	genetic = GeneticAlgorithm(graph)
+	dt = datetime.now()
+	time_start = dt.microsecond
 	solution = genetic.optimize()
+	global time_elapsed
+	dt = datetime.now()
+	time_stop = dt.microsecond
+	time_elapsed = time_stop-time_start
 	print("Solution: %s fitness: %d" % (solution.content, solution.fitness))
+	print "Time elapsed: " + str(time_elapsed) + " microseconds"
