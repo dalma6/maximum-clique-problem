@@ -1,14 +1,9 @@
 import Graph
-<<<<<<< HEAD
 from datetime import datetime
 
 def  clique(U,size):
 	dt = datetime.now()
 	time_start = dt.microsecond
-	
-=======
-def  clique(U , size):
->>>>>>> 7749a8b0280a30c2c933358ca4c78776fb9a0fea
 	global max
 	if U.length() == 0:
 		if size > max:
@@ -51,11 +46,6 @@ def  clique(U , size):
 
 graph = Graph.Graph("input2.json")
 max=0
-<<<<<<< HEAD
-clique(graph,0)
-print max
-print "Time elapsed: " + str(time_elapsed) + " microseconds"
-=======
 clique(graph,1)
 print max
->>>>>>> 7749a8b0280a30c2c933358ca4c78776fb9a0fea
+print "Time elapsed: " + str(time_elapsed) + " microseconds"
