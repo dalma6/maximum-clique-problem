@@ -1,5 +1,10 @@
 import Graph
+from datetime import datetime
+
 def  clique(U,size):
+	dt = datetime.now()
+	time_start = dt.microsecond
+	
 	global max
 	U.print_graph()
 	if U.length()==0:
@@ -27,6 +32,12 @@ def  clique(U,size):
 					del new_U[v]
 		U.vertices=new_U			
 		clique(U,size+1)
+		
+	global time_elapsed
+	dt = datetime.now()
+	time_stop = dt.microsecond
+	time_elapsed = time_stop-time_start
+		
 	return
 
 
@@ -35,3 +46,4 @@ graph = Graph.Graph("input1.json")
 max=0
 clique(graph,0)
 print max
+print "Time elapsed: " + str(time_elapsed) + " microseconds"
